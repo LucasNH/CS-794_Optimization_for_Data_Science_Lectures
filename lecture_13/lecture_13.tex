@@ -1,0 +1,212 @@
+\documentclass{article}
+
+% Math packages
+\usepackage{amsthm, amssymb}
+
+% Margins settings
+\usepackage[margin=1.2in]{geometry}
+
+% Bracket notation (quantum computing/information)
+\usepackage{tikz}
+\usetikzlibrary{quantikz}
+\usepackage{braket}
+
+% Spacing
+\usepackage{parskip}
+\usepackage{centernot}
+
+% Required for inserting images
+\usepackage{graphicx}
+\graphicspath{{./Figures/}}
+
+% Hyperlinks
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+% Header
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{October 23rd, 2024}
+\chead{Optimization for Data Science}
+\rhead{University of Waterloo}
+
+% Custom commands
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\text{E}}
+\newcommand{\ds}{\displaystyle}
+\newcommand{\indep}{\perp\!\!\!\perp}
+
+\setlength\parindent{0pt}
+
+\title{CO 673/CS 794 - Optimization for Data Science\\Lecture 13 Notes}
+\author{University of Waterloo}
+\date{October 23rd, 2024, 11h30-12h50 in MC 2054}
+
+\begin{document}
+
+\maketitle
+
+\section{Administration}
+
+\begin{itemize}
+    \item Problem set 4 going out today, due Friday November 1st at 19h00,
+    \item Problem set 3 solutions will be posted tomorrow evening,
+    \item Problem set 4 done in terms of size 1-3.
+\end{itemize}
+
+\section{Stochastic Gradient Descent}
+
+C. Paquette notes 2018:
+
+Assume $f \colon \R^n \to \R$ is $L$-smooth and convex. Then,
+\[
+    \forall \vec{x}, \quad \E\left[\|\nabla f(\vec{x}) - g(\vec{x};\; \vec{\xi})\|^2:\: \vec{\xi}\right] \leq B^2
+\]
+Take $\ds \alpha_k = \frac{1}{L + \frac{B}{R\sqrt{z}}k}$. Then,
+\[
+    \E\left[f\left(\frac{1}{k}\sum_{\ell = 1}^k \vec{x}_\ell\right)\right] - f(\vec{x}^*) \leq RB\sqrt{\frac{2}{k}} + \frac{LR^2}{k}
+\]
+Here $R = \|\vec{x}_0 - \vec{x}^*\|$
+
+Nesterov's 1983 article:
+\[
+    f(\vec{x}_k) - f(\vec{x}^*) \leq \left(1 - \text{const}\sqrt{\frac{m}{L}}\right)^k \times \|\vec{x}_0 - \vec{x}^*\|^2 \times \text{const}
+\]
+For restarted AGD applied to $L$-smooth and $m$-strongly convex function $f$.
+
+
+\section{Constrained and Non-smooth Optimization}
+
+\textbf{Example 1:}
+
+$\ell_1$-regularized least squares:
+\[
+    \min_{\vec{x}}\left(\frac{1}{2}\|A\vec{x} - \vec{y}\|^2 + \gamma\|\vec{x}\|_1\right) \tag{$\ell_1$ LS}
+\]
+Given $A \in \mathcal{M}_{m,\, n}(\R),\, \vec{y} \in \R^m,\, \gamma > 0$.
+
+Closely related constrained problem: Lasso regression:
+\[
+    \min_{\vec{x}}\left(\frac{1}{2}\|A\vec{x} - \vec{y}\|2\right) \quad \text{s.t.} \quad \|\vec{x}\|_1 \leq p
+\]
+Recall: $\forall \vec{x} \in \R^n$,
+\[
+\|\vec{x}\|_1 = \sum_{j = 1}^{n} |\vec{x}_j|
+\]
+2-norm regularze least squares (Tikhonov regularization/ridge regression):
+\[
+    \min_{\vec{x}}\left(\frac{1}{2}\|A\vec{x} - \vec{y}\|^2 + \frac{\gamma}{2}\|\vec{x}\|^2\right)
+\]
+Regularizer presents "large-norm bad" solutions from slightly poorly posed regression. Extreme example $m < n$.
+
+Difference between $\ell_1$ LS and ridge regression: $\ell_1$ LS ecourages many $0$'s in optimal $\vec{x}^*$.
+
+Typically: increase $\gamma$ decreases the number of non-zero entries in $\vec{x}^*$. Finding non-zero entries of $\vec{x}^*$ is sometimes called "feature selection".
+
+Observe that $\ell_1$ LS is convex (norms are always convex, and sum of two convex functions is convex) but is not differentiable because $x \mapsto |x|$ is not differentiable.
+
+\begin{center}
+    \includegraphics*[scale=0.4]{abs_x.png}
+\end{center}
+
+Highly likely being at point zero because $\ell_1$ LS encourages entries of $0$. Thus we cannot use gradient descent.
+
+We can reformulate $\ell_1$ LS to remove non-differentiability by introducing constrains:
+
+Introduce $t_j$ to stand for $|x_j|$ and rewrite as:
+\[
+    \min_{\vec{x},\, \vec{t}}\left(\|A\vec{x} - y\|^2 + \gamma\sum_{j = 1}^n t_j\right) \quad \text{s.t.} \quad \forall j \in \{1,\, \ldots,\, n\},\, t_j \geq x_j \wedge t_j \geq -x_j \tag{$\ell_1$ LS-$2$}
+\]
+The above is equivalent to $\ell_1$ LS.
+
+These constraints imply that $\forall j \in \{1,\, \ldots,\, n\}, t_j \geq |x_j|$. Do not write the constraint ``$t_j = |x_j$'', it is a non-smooth and non-convex constraint.
+
+It is OK that the constrains allow for $t_j > |x_j|$ because such a situation would not occur at the optimizer, as it would imply that we can still imrpove the solution.
+
+\textbf{Example 2:} Support vector machines (SVM) (p.6 of textbook) - popular up to around 2010
+
+Useful for binary classification.
+
+Given training data $(\vec{a}_1,\, y_1),\, \ldots,\, (\vec{a}_N,\, y_N)$ where $\forall j \in \{1,\, \ldots,\, N\}$, $y_j = \pm 1$.
+
+We seek $\vec{x} \in \R^n$, $\xi \in \R$ such that
+\[
+    \begin{cases}
+        \vec{a}_j^\top \vec{x} + \xi \geq 0 \quad \text{when } y_j = 1 \\
+        \vec{a}_j^\top \vec{x} + \xi \leq 0 \quad \text{when } y_j = -1
+    \end{cases} \tag{$\dag$}
+\]
+These are linear inequalities in $\vec{x}$, $\xi$. $\ell_1$ LS-$2$ is also constrained by linear inequalities.
+
+A ployhedron is the set of solutions to a system of linear inequalities.
+
+\begin{center}
+    \includegraphics*[scale=0.065]{polyhedra.JPG}
+
+    \small Examples of polyhedra
+\end{center}
+
+Which choice of $\vec{x}$, $\xi$ is best?
+
+\begin{center}
+    \includegraphics*[scale=0.065]{linear_classifiers.JPG}
+
+    \small Examples of linear classifiers
+\end{center}
+Idea: the best classifier is one that is furthest from data points.
+
+Computing the distance of a classifier, $(\vec{x},\, \xi)$ from a data point, $\vec{a}_j$:
+\[
+    \left\{\vec{a} : \vec{a}^\top \vec{x} + \xi = 0\right\}
+\]
+Assume $\|\vec{x}\| = 1$. (W.L.O.G., since $(\dag)$ are scale invariant)
+
+\textbf{Theorem.} The distance from the plane $\{\vec{v} : \vec{x}^\top \vec{v} + \xi = 0\}$ to a point $\vec{a}$ is $|\vec{x}^\top\vec{a} + \xi|$.
+
+\begin{proof}
+    Modeled by optimization
+    \[
+        \min_{\vec{v}}\left(\|\vec{a} - \vec{v}\|\right) \quad \text{s.t.} \quad \vec{x}^\top \vec{v} + \xi = 0
+    \]
+    Wirte $\vec{a} - \vec{v}$ as $\lambda \vec{x} + \vec{p}$, where $p \in \vec{x}^\bot$
+    \begin{align*}
+        \vec{x}^\top\vec{v} + \xi = 0 \quad &\implies \quad \vec{x}^\top \underbrace{a - \lambda\vec{x} - \vec{p}}_{= \vec{v}} + \xi = 0 \\
+        &\implies \quad \vec{x}^\top \vec{a} - \lambda + \xi = 0 \\
+        &\implies \lambda = \vec{x}^\top \vec{a} + \xi
+    \end{align*}
+    \[
+        \|\vec{a} - \vec{v}\|^2 = \|\lambda \vec{x} + \vec{p}\|^2 = \underbrace{\lambda^2\|\vec{x}\|^2}_{\indep \text{ of } \vec{p}} + \underbrace{2\lambda \vec{x}^\top \vec{p}}_{= 0} + \vec{p}^\top \vec{p}
+    \]
+    Thus, the best choice is $\vec{p} = \vec{0}$, so the closest point is
+    \[
+        \vec{v} = \vec{a} - \left(\vec{x}^\top \vec{a} + \xi\right)\vec{x}
+    \]
+    and the squared distance is $\lambda^2 = \left(\vec{x}^\top\vec{a} + \xi\right)^2$.
+\end{proof}
+
+SVM-$1$
+\[
+    \max_{\vec{x},\, \xi}\left(\min_{j \in \{1,\, \ldots,\, N\}}\left(\left|\vec{x}^\top \vec{a}_j + \xi\right|\right)\right) \quad \text{s.t.}  \quad (\dag) \wedge \|\vec{x}\| = 1
+\]
+Let $t_j = \left|\vec{x}^\top \vec{a_j} + \xi\right|$. We rewrite the above as
+\[
+    \max_{\vec{x},\, \xi,\, \vec{t}}\left(\min_{j \in \{1,\, \ldots,\, N\}}\left(t_j\right)\right) \quad \text{s.t.} \quad (\dag) \wedge \|x\| = 1 \wedge \forall j,\, t_j \geq 0
+\]
+\textbf{Claim:} Equivalent formulation results from replacing constraint $\|\vec{x}\| = 1$ with $\|\vec{x}\| \leq 1$.
+
+After making this replacement, we call the new problem ``SVM-$3$''.
+
+\begin{proof}
+    Suppose that $\begin{bmatrix}
+        \vec{x} & \xi & \vec{t}
+    \end{bmatrix}^\top$ is feasinle for SVM-$3$ and $\|\vec{x}\| < 1$. Then we have the following cases:
+    \begin{itemize}
+        \item $\vec{x} = \vec{0}$: Feasibility forces $\xi = t_j = 0$, $\forall j$.
+        \item $\vec{x} \neq \vec{0}$ but $\|\vec{x}\| < 1$: we replace:
+        \[
+            \vec{x} \text{ with } \vec{x}' = \frac{\vec{x}}{\|\vec{x}\|}, \quad \xi \text{ with } \xi' = \frac{\xi}{\|\vec{x}\|}, \quad \vec{t} \text{ with } \vec{t}' = \frac{\vec{t}}{\|\vec{x}\|}.
+        \]
+        This is still feasible, but a better objective function. Assuming separability, at the optimizer of SVM it is the case that $\|\vec{x}\| = 1$, hence, the equivalence to SVM-$2$.
+    \end{itemize}
+\end{proof}
+
+\end{document}
