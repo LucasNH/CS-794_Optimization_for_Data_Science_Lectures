@@ -206,25 +206,23 @@ Note: $1$-norm is separable, meaning that it can be written as $f_1(x_1) + \ldot
 Problem set 5: partly separable.
 
 Example 3: $\text{prox}_{t \|\cdot\|}$
-\begin{align*}
-    \varphi(\x) &= \|\x\| \\
-    \implies \quad \partial \varphi(\x) = \begin{cases}
+\[
+    \varphi(\x) = \|\x\| \quad \implies \quad \partial \varphi(\x) = \begin{cases}
         \left\{\frac{\x}{\|\x\|}\right\}, & \x \neq \vec{0} \\
-        \overline{B}_1\left(\vec{0}\right), & \vec{x} = \vec{0} \text{(d)}
+        \overline{B}_1\left(\vec{0}\right), & \x = \vec{0}
     \end{cases}
-\end{align*}
+\]
 \[
     \frac{\partial}{\partial x_j} \sqrt{\sum_{j = 1}^{j = n} x_j^2} = \frac{x_j}{\sqrt{\sum_{j = 1}^{j = n} x_j^2}} \quad \implies \quad \nabla \|\x\| = \frac{\x}{\|\x\|}
 \]
-Proving (d):
+To prove the $\x = \vec{0}$ case in Problem Set 5, use the Cauchy-Schwartz inequality to show that
 \[
     \overline{B}_1\left(\vec{0}\right) \subseteq \partial f(\x)
 \]
-We use the Cauchy-Schwartz inequality
+Then, select $\vec{g}$ such that $\|\vec{g}\| > 1$. We must find $\y$ that violates the subgradient inequality.
 \[
     \R^n \setminus \overline{B}_1\left(\vec{0}\right) \subseteq \R^n \setminus f(\x)
 \]
-We select $\vec{g}$ such that $\|\vec{g}\| > 1$. We must find $\y$ that violates the subgradient inequality.
 
 \[
     \text{prox}_{t \|\cdot\|}(\x) = \text{argmin}_{\z}
